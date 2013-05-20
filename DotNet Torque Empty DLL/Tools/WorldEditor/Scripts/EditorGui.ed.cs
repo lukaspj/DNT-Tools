@@ -193,15 +193,15 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
                 ESettingsWindow.setVisible(false);
 
                 Util.exec("~/worldEditor/gui/GeneralSettingsTab.ed.gui", false, false);
-                ESettingsWindow.addTabPage(console.GetObjectID("EGeneralSettingsPage"));
+                ESettingsWindow.call("addTabPage", console.GetObjectID("EGeneralSettingsPage").AsString());
                 Util.exec("~/worldEditor/gui/ObjectEditorSettingsTab.ed.gui", false, false);
-                ESettingsWindow.addTabPage(console.GetObjectID("EObjectEditorSettingsPage"));
+                ESettingsWindow.call("addTabPage", console.GetObjectID("EObjectEditorSettingsPage").AsString());
                 Util.exec("~/worldEditor/gui/AxisGizmoSettingsTab.ed.gui", false, false);
-                ESettingsWindow.addTabPage(console.GetObjectID("EAxisGizmoSettingsPage"));
+                ESettingsWindow.call("addTabPage", console.GetObjectID("EAxisGizmoSettingsPage").AsString());
                 Util.exec("~/worldEditor/gui/TerrainEditorSettingsTab.ed.gui", false, false);
-                ESettingsWindow.addTabPage(console.GetObjectID("ETerrainEditorSettingsPage"));
+                ESettingsWindow.call("addTabPage", console.GetObjectID("ETerrainEditorSettingsPage").AsString());
                 Util.exec("~/worldEditor/gui/CameraSettingsTab.ed.gui", false, false);
-                ESettingsWindow.addTabPage(console.GetObjectID("ECameraSettingsPage"));
+                ESettingsWindow.call("addTabPage", console.GetObjectID("ECameraSettingsPage").AsString());
             }
 
             if (!console.isObject(thisObj.findObjectByInternalName("SnapOptionsWindow", true)))
@@ -285,9 +285,9 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
             coSimSet EditorPluginSet = console.GetObjectID("EditorPluginSet");
 
             // Call the startup callback on the editor plugins.   
-            for ( int i = 0; i < EditorPluginSet.getCount(); i++ )
+            for ( uint i = 0; i < EditorPluginSet.getCount(); i++ )
             {
-                coSimObject obj = EditorPluginSet.getObject( %i );
+                coSimObject obj = EditorPluginSet.getObject( i );
                 obj.call("onWorldEditorStartup");     
             }
 
@@ -1036,7 +1036,7 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
         }
 
         [Torque_Decorations.TorqueCallBack("", "WorldEditorInspectorPlugin", "onDeactivated", "", 1, 2500, false)]
-        public void WorldEditorInspectorPluginOnDeactivated(coSimObject thisObj)
+        public void WorldEditorInspectorPluginOnDeactivated(coSimObject thisObj, int nameSpaceDepth)
         {
             coGuiContainer EditorGui = console.GetObjectID("EditorGui");
 
@@ -1082,25 +1082,25 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
         }
 
         [Torque_Decorations.TorqueCallBack("", "WorldEditorInspectorPlugin", "handleDeselect", "", 1, 2500, false)]
-        public void WorldEditorInspectorPluginHandleDeselect(string )
+        public void WorldEditorInspectorPluginHandleDeselect(coGuiControl thisObj)
         {
            ((coWorldEditor)console.GetObjectID("EWorldEditor")).clearSelection();
         }
 
         [Torque_Decorations.TorqueCallBack("", "WorldEditorInspectorPlugin", "handleCut", "", 1, 2500, false)]
-        public void WorldEditorInspectorPluginHandleCut(string )
+        public void WorldEditorInspectorPluginHandleCut(coGuiControl thisObj)
         {
            ((coWorldEditor)console.GetObjectID("EWorldEditor")).cutSelection();
         }
 
         [Torque_Decorations.TorqueCallBack("", "WorldEditorInspectorPlugin", "handleCopy", "", 1, 2500, false)]
-        public void WorldEditorInspectorPluginHandleCopy(string )
+        public void WorldEditorInspectorPluginHandleCopy(coGuiControl thisObj)
         {
            ((coWorldEditor)console.GetObjectID("EWorldEditor")).copySelection();
         }
 
         [Torque_Decorations.TorqueCallBack("", "WorldEditorInspectorPlugin", "handlePaste", "", 1, 2500, false)]
-        public void WorldEditorInspectorPluginHandlePaste(string )
+        public void WorldEditorInspectorPluginHandlePaste(coGuiControl thisObj)
         {
            ((coWorldEditor)console.GetObjectID("EWorldEditor")).pasteSelection();
         }
@@ -1266,7 +1266,7 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
    
             ((coGuiControl)EditorGui.findObjectByInternalName("TextureEditor", true)).setVisible(true);
             
-           ((coGuiContainer)console.GetObjectID("EditorGuiStatusBar")).setSelection("");
+           ((coGuiContainer)console.GetObjectID("EditorGuiStatusBar")).call("setSelection", "");
         }
 
         [Torque_Decorations.TorqueCallBack("", "TerrainTextureEditorTool", "onDeactivated", "", 1, 2500, false)]
@@ -1314,60 +1314,77 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
             console.Call_Classname("GuiWindowCtrl", "attach", "EPainter", "EPainterPreview");
         }
 
-      [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "onActivated", "", 1, 2500, false)]
-      public void TerrainPainterPluginOnActivated(coSimObject thisObj, int nameSpaceDepth)
-      {
-         coGuiContainer EditorGui = console.GetObjectID("EditorGui");
-         coGuiControl EWTerrainPainterToolbarBrushType = console.GetObjectID("EWTerrainPainterToolbarBrushType");
-         coWorldEditor ETerrainEditor = console.GetObjectID("ETerrainEditor");
+        [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "onActivated", "", 1, 2500, false)]
+        public void TerrainPainterPluginOnActivated(coSimObject thisObj, int nameSpaceDepth)
+        {
+            coGuiContainer EditorGui = console.GetObjectID("EditorGui");
+            coGuiControl EWTerrainPainterToolbarBrushType = console.GetObjectID("EWTerrainPainterToolbarBrushType");
+            coTerrainEditor ETerrainEditor = console.GetObjectID("ETerrainEditor");
 
-         console.ParentExecute(thisObj, nameSpaceDepth, new string[] {});
+            console.ParentExecute(thisObj, nameSpaceDepth, new string[] {});
 
-         EditorGui.call("readTerrainEditorSettings");
+            EditorGui.call("readTerrainEditorSettings");
 
-         ((coGuiBitmapButtonCtrl)EWTerrainPainterToolbarBrushType.findObjectByInternalName("ellipse", false)).performClick();// Circle Brush
-         ((coActionMap)thisObj["map"]).push();
+            ((coGuiBitmapButtonCtrl)EWTerrainPainterToolbarBrushType.findObjectByInternalName("ellipse", false)).performClick();// Circle Brush
+            ((coActionMap)thisObj["map"]).push();
 
-         EditorGui.bringToFront( ETerrainEditor );
-         ETerrainEditor.setVisible( true );
-         ETerrainEditor.call("attachTerrain");
-         ETerrainEditor.call("makeFirstResponder", "true" );
+            EditorGui.bringToFront( ETerrainEditor );
+            ETerrainEditor.setVisible( true );
+            ETerrainEditor.call("attachTerrain");
+            ETerrainEditor.makeFirstResponder("true");
 
-         ((coGuiWindowCollapseCtrl)EditorGui.findObjectByInternalName("TerrainPainter", true)).setVisible(true);
-         ((coGuiWindowCollapseCtrl)EditorGui.findObjectByInternalName("TerrainPainterPreview", true)).setVisible(true);
-         ((coGuiControl)console.GetObjectID("EWTerrainPainterToolbar")).setVisible(true);
-         ETerrainEditor.call("onBrushChanged");
-         ((coGuiWindowCollapseCtrl)console.GetObjectID("EPainter")).call("setup");
-         ((coScriptObject)console.GetObjectID("TerrainPainterPlugin")).call("syncBrushInfo");
+            ((coGuiWindowCollapseCtrl)EditorGui.findObjectByInternalName("TerrainPainter", true)).setVisible(true);
+            ((coGuiWindowCollapseCtrl)EditorGui.findObjectByInternalName("TerrainPainterPreview", true)).setVisible(true);
+            ((coGuiControl)console.GetObjectID("EWTerrainPainterToolbar")).setVisible(true);
+            ETerrainEditor.call("onBrushChanged");
+            ((coGuiWindowCollapseCtrl)console.GetObjectID("EPainter")).call("setup");
+            ((coScriptObject)console.GetObjectID("TerrainPainterPlugin")).call("syncBrushInfo");
 
-         ((coGuiContainer)console.GetObjectID("EditorGuiStatusBar")).call("setSelection","");
-      }
-      [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "onDeactivated", "", 1, 2500, false)]
-      public void TerrainPainterPluginOnDeactivated(coSimObject thisObj, int nameSpaceDepth)
-      {
-         Parent::onDeactivated( thisObj );
+            ((coGuiContainer)console.GetObjectID("EditorGuiStatusBar")).call("setSelection","");
+        }
+        [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "onDeactivated", "(%this,nameSpaceDepth)", 1, 2500, false)]
+        public void TerrainPainterPluginOnDeactivated(coSimObject thisObj, int nameSpaceDepth)
+        {
+            coGuiContainer EditorGui = console.GetObjectID("EditorGui");
 
+            console.ParentExecute(thisObj, "onDeactivated", nameSpaceDepth, new string[] {});
 
-         EditorGui.writeTerrainEditorSettings();
+            EditorGui.call("writeTerrainEditorSettings");
+            ((coActionMap)thisObj["map"]).pop();
+            ((coGuiWindowCollapseCtrl)EditorGui.findObjectByInternalName("TerrainPainter", true)).setVisible(false);
+            ((coGuiWindowCollapseCtrl)EditorGui.findObjectByInternalName("TerrainPainterPreview", true)).setVisible(false);
+            ((coGuiControl)console.GetObjectID("EWTerrainPainterToolbar")).setVisible(false);
+            ((coTerrainEditor)console.GetObjectID("ETerrainEditor")).setVisible(false);
+          
+        }
+        [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "syncBrushInfo", "", 1, 2500, false)]
+        public void TerrainPainterPluginSyncBrushInfo(coSimObject thisObj)
+        {
+            coTerrainEditor ETerrainEditor = console.GetObjectID("ETerrainEditor");
+            coGuiControl PaintBrushSlopeControl = console.GetObjectID("PaintBrushSlopeControl");
+            // Update gui brush info
+            ((coGuiTextEditCtrl)((coGuiControl)console.GetObjectID("PaintBrushSizeTextEditContainer")).findObjectByInternalName("textEdit", true)).text = ETerrainEditor.call("getBrushSize").Split(' ')[0];
+            ((coGuiTextEditCtrl)PaintBrushSlopeControl.findObjectByInternalName("SlopeMinAngle", true)).text = ETerrainEditor.call("getSlopeLimitMinAngle");
+            ((coGuiTextEditCtrl)PaintBrushSlopeControl.findObjectByInternalName("SlopeMaxAngle", true)).text = ETerrainEditor.call("getSlopeLimitMaxAngle");
+        ((coGuiTextEditCtrl)((coGuiControl)console.GetObjectID("PaintBrushPressureTextEditContainer")).findObjectByInternalName("textEdit", true)).text = (ETerrainEditor.call("getBrushPressure").AsFloat() * 100.0f).AsString();
+            string brushType = ETerrainEditor.call("getBrushType");
+            console.Eval( "EWTerrainPainterToolbar-->" + brushType + ".setStateOn(1);" );
+        }
 
-         thisObj.map.pop();
-         EditorGui-->TerrainPainter.setVisible(false);
-         EditorGui-->TerrainPainterPreview.setVisible(false);
-         EWTerrainPainterToolbar.setVisible(false);
-         ETerrainEditor.setVisible( false );
-      }
-      [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "syncBrushInfo", "", 1, 2500, false)]
-      public void TerrainPainterPluginSyncBrushInfo(coSimObject thisObj)
-      {
-         // Update gui brush info
-         PaintBrushSizeTextEditContainer-->textEdit.text = getWord(ETerrainEditor.getBrushSize(), 0);
-         PaintBrushSlopeControl-->SlopeMinAngle.text = ETerrainEditor.getSlopeLimitMinAngle();
-         PaintBrushSlopeControl-->SlopeMaxAngle.text = ETerrainEditor.getSlopeLimitMaxAngle();
-         PaintBrushPressureTextEditContainer-->textEdit.text = ETerrainEditor.getBrushPressure()*100;
-         brushType = ETerrainEditor.getBrushType();
-         eval( "EWTerrainPainterToolbar-->" @ brushType @ ".setStateOn(1);" );
-      }
+        [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "validateBrushSize", "", 1, 2500, false)]
+        public void TerrainPainterPluginValidateBrushSize(coScriptObject thisObj)
+        {
+            coTerrainEditor ETerrainEditor = console.GetObjectID("ETerrainEditor");
 
+            float minBrushSize = 1;
+            float maxBrushSize = ETerrainEditor["maxBrushSize"].Split(' ')[0].AsFloat();
+            coGuiTextEditCtrl ThisControl = sGlobal["ThisControl"];
+            float val = ThisControl.getText().AsFloat();
+            if (val < minBrushSize)
+                ThisControl.setValue(minBrushSize.AsString());
+            else if (val > maxBrushSize)
+                ThisControl.setValue(maxBrushSize.AsString());
+        }
 
 
     }
