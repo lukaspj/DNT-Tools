@@ -60,8 +60,6 @@ using WinterLeaf.Containers;
 using WinterLeaf.Enums;
 using WinterLeaf.tsObjects;
 
-using DNT_Empty_DLL.Tools.WorldEditor.Scripts.Classes;
-
 #endregion
 
 namespace DNT_FPS_Demo_Game_Dll.Tools
@@ -347,7 +345,7 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
             gui.add(txt1);
 
             coGuiBitmapButtonCtrl but2;
-            TCH = new Torque_Class_Helper("GuiBitmapButtonCtrl);
+            TCH = new Torque_Class_Helper("GuiBitmapButtonCtrl");
             TCH.Props.Add("class", "EManageBookmarksDeleteButton");
             TCH.Props.Add("bitmap", "tools/gui/images/delete");
             TCH.Props.Add("groupNum", "-1");

@@ -141,7 +141,7 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
 
             // Make sure the object name is valid.
             coEditManager EditManager = console.GetObjectID("EditManager");
-            if (!EditManagerValidateObjectName(objName, true))
+            if (!console.Call("EditManagerValidateObjectName", objName, "true").AsBool())
                 return;
 
             // Make sure the .fev file exists.
@@ -265,7 +265,7 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
             dlg = TCH.Create();
 
             bool ret = dlg.Execute();
-            string file;
+            string file = "";
             if (ret)
                 file = dlg.fileName;
 
