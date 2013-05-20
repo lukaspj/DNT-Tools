@@ -1517,6 +1517,23 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
    
             thisObj.call("syncGui");
         }
+        [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "areAllSelectedObjectsOfType", "", 2, 2500, false)]
+        public bool EWorldEditorAreAllSelectedObjectsOfType(coWorldEditor thisObj, string className)
+        {
+            coGuiControl activeSelection = thisObj.getActiveSelection();
+            if( !activeSelection.isObject() )
+                return false;
+      
+            int count = activeSelection.getCount();
+            for( uint i = 0; i < count; i ++ )
+            {
+                coSimObject obj = activeSelection.getObject( i );
+                if( !obj.isMemberOfClass( className ) )
+                    return false;
+            }
+      
+            return true;
+        }
 
     }
 }
