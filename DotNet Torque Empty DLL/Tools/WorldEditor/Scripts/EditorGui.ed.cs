@@ -1082,25 +1082,25 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
         }
 
         [Torque_Decorations.TorqueCallBack("", "WorldEditorInspectorPlugin", "handleDeselect", "", 1, 2500, false)]
-        public void WorldEditorInspectorPluginHandleDeselect(coGuiControl thisObj)
+        public void WorldEditorInspectorPluginHandleDeselect()
         {
            ((coWorldEditor)console.GetObjectID("EWorldEditor")).clearSelection();
         }
 
         [Torque_Decorations.TorqueCallBack("", "WorldEditorInspectorPlugin", "handleCut", "", 1, 2500, false)]
-        public void WorldEditorInspectorPluginHandleCut(coGuiControl thisObj)
+        public void WorldEditorInspectorPluginHandleCut()
         {
            ((coWorldEditor)console.GetObjectID("EWorldEditor")).cutSelection();
         }
 
         [Torque_Decorations.TorqueCallBack("", "WorldEditorInspectorPlugin", "handleCopy", "", 1, 2500, false)]
-        public void WorldEditorInspectorPluginHandleCopy(coGuiControl thisObj)
+        public void WorldEditorInspectorPluginHandleCopy()
         {
            ((coWorldEditor)console.GetObjectID("EWorldEditor")).copySelection();
         }
 
         [Torque_Decorations.TorqueCallBack("", "WorldEditorInspectorPlugin", "handlePaste", "", 1, 2500, false)]
-        public void WorldEditorInspectorPluginHandlePaste(coGuiControl thisObj)
+        public void WorldEditorInspectorPluginHandlePaste()
         {
            ((coWorldEditor)console.GetObjectID("EWorldEditor")).pasteSelection();
         }
@@ -1386,6 +1386,137 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
                 ThisControl.setValue(maxBrushSize.AsString());
         }
 
+        [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "validateSlopeMaxAngle", "", 1, 2500, false)]
+        public void TerrainPainterPluginValidateSlopeMaxAngle(coSimObject thisObj)
+        {
+            coTerrainEditor ETerrainEditor = console.GetObjectID("ETerrainEditor");
+            coGuiControl PaintBrushSlopeControl = console.GetObjectID("PaintBrushSlopeControl");
+            float maxval = ETerrainEditor.call("getSlopeLimitMaxAngle").AsFloat();
+            ((coGuiTextEditCtrl)PaintBrushSlopeControl.findObjectByInternalName("SlopeMaxAngle", true)).setText(maxval.AsString()); 
+        }
+        [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "validateSlopeMinAngle", "", 1, 2500, false)]
+        public void TerrainPainterPluginValidateSlopeMinAngle(coSimObject thisObj)
+        {
+            coTerrainEditor ETerrainEditor = console.GetObjectID("ETerrainEditor");
+            coGuiControl PaintBrushSlopeControl = console.GetObjectID("PaintBrushSlopeControl");
+            float minval = ETerrainEditor.call("getSlopeLimitMinAngle").AsFloat();
+            ((coGuiTextEditCtrl)PaintBrushSlopeControl.findObjectByInternalName("SlopeMinAngle", true)).setText(minval.AsString());
+        }
+        [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "keyboardModifyBrushSize", "", 2, 2500, false)]
+        public void TerrainPainterPluginKeyboardModifyBrushSize(coSimObject thisObj, float amt)
+        {
+            coTerrainEditor ETerrainEditor = console.GetObjectID("ETerrainEditor");
+            coGuiControl PaintBrushSizeTextEditContainer = console.GetObjectID("PaintBrushSizeTextEditContainer");
+            coGuiTextEditCtrl textEdit = PaintBrushSizeTextEditContainer.findObjectByInternalName("textEdit",true);
+
+            float val = textEdit.getText().AsFloat();
+            val += amt;
+            textEdit.setValue(val.AsString());
+            textEdit.forceValidateText();
+            ETerrainEditor.call("setBrushSize", textEdit.getText());
+        }
+        [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "keyboardSetMaterial", "", 2, 2500, false)]
+        public void TerrainPainterPluginKeyboardSetMaterial(coSimObject thisObj, string mat)
+        {
+            string name = "EPainterMaterialButton" + mat;
+            coGuiControl ctrl = ((coGuiControl)console.GetObjectID("EPainter")).findObjectByInternalName(name, true);
+            if(ctrl.isObject())
+            {
+                ctrl.call("performClick");
+            }
+        }
+        [Torque_Decorations.TorqueCallBack("", "objectTransformDropdown", "toggle", "", 0, 2500, false)]
+        public void objectTransformDropdownToggle()
+        {
+            coGuiContainer objectTransformDropdown = console.GetObjectID("objectTransformDropdown");
+            coGuiContainer objectTransformDropdownDecoy = console.GetObjectID("objectTransformDropdownDecoy");
+            coGuiControl EWorldEditorToolbar = console.GetObjectID("EWorldEditorToolbar");
+            coGuiBitmapButtonCtrl objectTransform = EWorldEditorToolbar.findObjectByInternalName("objectTransform", true);
+
+            if ( objectTransformDropdown.visible )
+            {
+                objectTransform.setStateOn(false);
+                objectTransformDropdownDecoy.setVisible(false);
+                objectTransformDropdownDecoy.setActive(false);
+                objectTransformDropdown.setVisible(false);
+            }
+            else
+            {
+                objectTransform.setStateOn(true);
+                objectTransformDropdown.setVisible(true);
+                objectTransformDropdownDecoy.setActive(true);
+                objectTransformDropdownDecoy.setVisible(true);
+            }
+        }
+        [Torque_Decorations.TorqueCallBack("", "", " CameraTypesDropdownToggle", "", 0, 2500, false)]
+        public void  CameraTypesDropdownToggle()
+        {
+            coGuiContainer CameraTypesDropdown = console.GetObjectID("CameraTypesDropdown");
+            coGuiContainer CameraTypesDropdownDecoy = console.GetObjectID("CameraTypesDropdownDecoy");
+            coGuiBitmapButtonCtrl EWorldEditorToggleCamera = console.GetObjectID("EWorldEditorToggleCamera");
+            if ( CameraTypesDropdown.visible  )
+            {
+                EWorldEditorToggleCamera.setStateOn(false);
+                CameraTypesDropdownDecoy.setVisible(false);
+                CameraTypesDropdownDecoy.setActive(false);
+                CameraTypesDropdown.setVisible(false);
+            }
+            else
+            {
+                CameraTypesDropdown.setVisible(true);
+                CameraTypesDropdownDecoy.setVisible(true);
+                CameraTypesDropdownDecoy.setActive(true);
+                EWorldEditorToggleCamera.setStateOn(true);
+            }
+        }
+        [Torque_Decorations.TorqueCallBack("", "", " VisibilityDropdownToggle", "", 1, 2500, false)]
+        public void  VisibilityDropdownToggle(string )
+        {
+            coGuiWindowCtrl EVisibility = console.GetObjectID("EVisibility");
+            coGuiBitmapButtonCtrl visibilityToggleBtn = console.GetObjectID("visibilityToggleBtn");
+            if ( EVisibility.visible  )
+            {
+                EVisibility.setVisible(false);
+                visibilityToggleBtn.setStateOn(false);
+            }
+            else
+            {
+                EVisibility.setVisible(true);
+                visibilityToggleBtn.setStateOn(true);
+            }
+        }
+        [Torque_Decorations.TorqueCallBack("", "CameraTypesDropdownDecoy", "onMouseLeave", "", 0, 2500, false)]
+        public void CameraTypesDropdownDecoyOnMouseLeave()
+        {
+            CameraTypesDropdownToggle();
+        }
+        [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "getGridSnap", "", 1, 2500, false)]
+        public bool EWorldEditorGetGridSnap(coSimObject thisObj)
+        {
+            return thisObj["gridSnap"].AsBool();
+        }
+        [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "setGridSnap", "", 2, 2500, false)]
+        public void EWorldEditorSetGridSnap(coSimObject thisObj, bool value)
+        {
+            coGizmoProfile GlobalGizmoProfile = console.GetObjectID("GlobalGizmoProfile");
+            thisObj["gridSnap"] = value.AsString();
+            GlobalGizmoProfile.snapToGrid = value;
+            thisObj.call("syncGui");
+        }
+        [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "getGridSize", "", 1, 2500, false)]
+        public float EWorldEditorGetGridSize(coSimObject thisObj)
+        {
+            return thisObj["gridSize"].AsFloat();
+        }
+        [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "setGridSize", "", 2, 2500, false)]
+        public void EWorldEditorSetGridSize(coSimObject thisObj, float value)
+        {
+            coGizmoProfile GlobalGizmoProfile = console.GetObjectID("GlobalGizmoProfile");
+            GlobalGizmoProfile.gridSize = new Point3F(value, value, value);
+            thisObj["gridSize"] = value.AsString();
+   
+            thisObj.call("syncGui");
+        }
 
     }
 }
