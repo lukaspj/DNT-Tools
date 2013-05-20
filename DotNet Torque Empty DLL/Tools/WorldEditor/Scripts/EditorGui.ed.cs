@@ -1314,6 +1314,61 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
             console.Call_Classname("GuiWindowCtrl", "attach", "EPainter", "EPainterPreview");
         }
 
+      [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "onActivated", "", 1, 2500, false)]
+      public void TerrainPainterPluginOnActivated(coSimObject thisObj, int nameSpaceDepth)
+      {
+         coGuiContainer EditorGui = console.GetObjectID("EditorGui");
+         coGuiControl EWTerrainPainterToolbarBrushType = console.GetObjectID("EWTerrainPainterToolbarBrushType");
+         coWorldEditor ETerrainEditor = console.GetObjectID("ETerrainEditor");
+
+         console.ParentExecute(thisObj, nameSpaceDepth, new string[] {});
+
+         EditorGui.call("readTerrainEditorSettings");
+
+         ((coGuiBitmapButtonCtrl)EWTerrainPainterToolbarBrushType.findObjectByInternalName("ellipse", false)).performClick();// Circle Brush
+         ((coActionMap)thisObj["map"]).push();
+
+         EditorGui.bringToFront( ETerrainEditor );
+         ETerrainEditor.setVisible( true );
+         ETerrainEditor.call("attachTerrain");
+         ETerrainEditor.call("makeFirstResponder", "true" );
+
+         ((coGuiWindowCollapseCtrl)EditorGui.findObjectByInternalName("TerrainPainter", true)).setVisible(true);
+         ((coGuiWindowCollapseCtrl)EditorGui.findObjectByInternalName("TerrainPainterPreview", true)).setVisible(true);
+         ((coGuiControl)console.GetObjectID("EWTerrainPainterToolbar")).setVisible(true);
+         ETerrainEditor.call("onBrushChanged");
+         ((coGuiWindowCollapseCtrl)console.GetObjectID("EPainter")).call("setup");
+         ((coScriptObject)console.GetObjectID("TerrainPainterPlugin")).call("syncBrushInfo");
+
+         ((coGuiContainer)console.GetObjectID("EditorGuiStatusBar")).call("setSelection","");
+      }
+      [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "onDeactivated", "", 1, 2500, false)]
+      public void TerrainPainterPluginOnDeactivated(coSimObject thisObj, int nameSpaceDepth)
+      {
+         Parent::onDeactivated( thisObj );
+
+
+         EditorGui.writeTerrainEditorSettings();
+
+         thisObj.map.pop();
+         EditorGui-->TerrainPainter.setVisible(false);
+         EditorGui-->TerrainPainterPreview.setVisible(false);
+         EWTerrainPainterToolbar.setVisible(false);
+         ETerrainEditor.setVisible( false );
+      }
+      [Torque_Decorations.TorqueCallBack("", "TerrainPainterPlugin", "syncBrushInfo", "", 1, 2500, false)]
+      public void TerrainPainterPluginSyncBrushInfo(coSimObject thisObj)
+      {
+         // Update gui brush info
+         PaintBrushSizeTextEditContainer-->textEdit.text = getWord(ETerrainEditor.getBrushSize(), 0);
+         PaintBrushSlopeControl-->SlopeMinAngle.text = ETerrainEditor.getSlopeLimitMinAngle();
+         PaintBrushSlopeControl-->SlopeMaxAngle.text = ETerrainEditor.getSlopeLimitMaxAngle();
+         PaintBrushPressureTextEditContainer-->textEdit.text = ETerrainEditor.getBrushPressure()*100;
+         brushType = ETerrainEditor.getBrushType();
+         eval( "EWTerrainPainterToolbar-->" @ brushType @ ".setStateOn(1);" );
+      }
+
+
 
     }
 }
