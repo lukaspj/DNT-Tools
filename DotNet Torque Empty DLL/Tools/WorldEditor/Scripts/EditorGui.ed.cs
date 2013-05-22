@@ -1698,37 +1698,474 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
                DeleteSelection["command"] = "EditorMenuEditDelete();";
             }
          }
-       [Torque_Decorations.TorqueCallBack("", "EditorTree", "onAddSelection", "", 3, 2500, false)]
-      public void EditorTreeOnAddSelection(coSimObject thisObj, string obj, string isLastSelection)
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "onAddSelection", "", 3, 2500, false)]
+      public void EditorTreeOnAddSelection(coSimObject thisObj, coSimObject obj, bool isLastSelection)
       {
-          coWorldEditor EWorldEditor = console.GetObjectID("EWorldEditor");
+         coWorldEditor EWorldEditor = console.GetObjectID("EWorldEditor");
+         coGuiWindowCollapseCtrl EWTreeWindow = console.GetObjectID("EWTreeWindow");
+         coGuiBitmapButtonCtrl LockSelection = EWTreeWindow.findObjectByInternalName("LockSelection", true);
+         coGuiBitmapButtonCtrl DeleteSelection = EWTreeWindow.findObjectByInternalName("DeleteSelection", true);
+         coGuiInspector Inspector = console.GetObjectID("Inspector");
          EWorldEditor.selectObject( obj );
    
          int selSize = EWorldEditor.getSelectionSize();
-         int lockCount = EWorldEditor.getSelectionLockCount();
+         int lockCount = EWorldEditor.call("getSelectionLockCount").AsInt();
    
          if( lockCount < selSize )
          {
-            EWTreeWindow-->LockSelection.setStateOn(0);
-            EWTreeWindow-->LockSelection.command = "EWorldEditor.lockSelection(true); EditorTree.toggleLock();";
+            LockSelection.setStateOn(false);
+            LockSelection.command = "EWorldEditor.lockSelection(true); EditorTree.toggleLock();";
          }
          else if ( lockCount > 0 )
          {
-            EWTreeWindow-->LockSelection.setStateOn(1);
-            EWTreeWindow-->LockSelection.command = "EWorldEditor.lockSelection(false); EditorTree.toggleLock();";
+            LockSelection.setStateOn(true);
+            LockSelection.command = "EWorldEditor.lockSelection(false); EditorTree.toggleLock();";
          }
    
          if( selSize > 0 && lockCount == 0 )
-            EWTreeWindow-->DeleteSelection.command = "EditorMenuEditDelete();";
+            DeleteSelection.command = "EditorMenuEditDelete();";
          else
-            EWTreeWindow-->DeleteSelection.command = "";
+            DeleteSelection.command = "";
    
          if( isLastSelection )
             Inspector.addInspect( obj );
          else  
-            Inspector.addInspect( obj, false );
+            Inspector.addInspect( obj, "false" );
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "onRemoveSelection", "", 2, 2500, false)]
+      public void EditorTreeOnRemoveSelection(coSimObject thisObj, string obj)
+      {
+         coWorldEditor EWorldEditor = console.GetObjectID("EWorldEditor");
+         coGuiInspector Inspector = console.GetObjectID("Inspector");
+         EWorldEditor.unselectObject(obj);
+         Inspector.removeInspect( obj );
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "onUnselect", "", 2, 2500, false)]
+      public void EditorTreeOnUnselect(coSimObject thisObj, string obj)
+      {
+         coWorldEditor EWorldEditor = console.GetObjectID("EWorldEditor");
+         EWorldEditor.unselectObject(obj);
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "onDragDropped", "", 1, 2500, false)]
+      public void EditorTreeOnDragDropped(coSimObject thisObj)
+      {
+         coWorldEditor EWorldEditor = console.GetObjectID("EWorldEditor");
+         EWorldEditor.isDirty = true;
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "onAddGroupSelected", "", 2, 2500, false)]
+      public void EditorTreeOnAddGroupSelected(coSimObject thisObj, string group)
+      {
+         coGuiWindowCtrl EWCreatorWindow = console.GetObjectID("EWCreatorWindow");
+         EWCreatorWindow.call("setNewObjectGroup", group);
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "onRightMouseUp", "", 4, 2500, false)]
+      public void EditorTreeOnRightMouseUp(coGuiTreeViewCtrl thisObj, int itemId, string mouse, coSimGroup obj)
+      {
+         bool haveObjectEntries = false;
+         bool haveLockAndHideEntries = true;
+         coPopupMenu popup = null;
+         // Handle multi-selection.
+         if( thisObj.getSelectedItemsCount() > 1 )
+         {
+            popup = console.GetObjectID("ETMultiSelectionContextPopup");
+            if( !popup.isObject() )
+            {
+               Torque_Class_Helper TCH = new Torque_Class_Helper("PopupMenu", "ETMultiSelectionContextPopup");
+               TCH.Props.Add("superClass", "MenuBuilder");
+               TCH.Props.Add("isPopup", "1");
+               TCH.Props.Add("item[ 0 ]", "Delete\t\tEditorMenuEditDelete();");
+               TCH.Props.Add("item[ 1 ]", "Group\t\tEWorldEditor.addSimGroup( true );";
+               popup = TCH.Create();
+            }
+         }
+
+         // Open context menu if this is a CameraBookmark
+         else if( obj.isMemberOfClass( "CameraBookmark" ) )
+         {
+            popup = console.GetObjectID("ETCameraBookmarkContextPopup");
+            if( !popup.isObject() )
+            {
+               Torque_Class_Helper TCH = new Torque_Class_Helper("PopupMenu", "ETCameraBookmarkContextPopup");
+               TCH.Props.Add("superClass", "MenuBuilder");
+               TCH.Props.Add("isPopup", "1");
+               TCH.Props.Add("item[ 0 ]", "Go To Bookmark\t\tEditorGui.jumpToBookmark( thisObj.bookmark.getInternalName() );");
+               TCH.Props.Add("bookmark", "-1");
+               popup = TCH.Create();
+            }
+
+            popup["bookmark"] = obj;
+         }
+
+         // Open context menu if this is set CameraBookmarks group.
+         else if( obj.name.Equals("CameraBookmarks") )
+         {
+            popup = console.GetObjectID("ETCameraBookmarksGroupContextPopup");
+            if( !popup.isObject() )
+            {
+               Torque_Class_Helper TCH = new Torque_Class_Helper("PopupMenu", "ETCameraBookmarksGroupContextPopup");
+               TCH.Props.Add("superClass", "MenuBuilder");
+               TCH.Props.Add("isPopup", "1");
+               TCH.Props.Add("item[ 0 ]", "Add Camera Bookmark\t\tEditorGui.addCameraBookmarkByGui();");
+               popup = TCH.Create();
+            }
+         }
+
+         // Open context menu if this is a SimGroup
+         else if( obj.isMemberOfClass( "SimGroup" ) )
+         {
+            popup = console.GetObjectID("ETSimGroupContextPopup");
+            if( !popup.isObject() )
+            {
+               Torque_Class_Helper TCH = new Torque_Class_Helper("PopupMenu", "ETSimGroupContextPopup");
+               TCH.Props.Add("superClass", "MenuBuilder");
+               TCH.Props.Add("isPopup", "1");
+               TCH.Props.Add("item[ 0 ]", "Add Camera Bookmark\t\tEditorGui.addCameraBookmarkByGui();");
+               TCH.Props.Add("item[ 0 ]", "Rename\t\tEditorTree.showItemRenameCtrl( EditorTree.findItemByObjectId( thisObj.object ) );");
+               TCH.Props.Add("item[ 1 ]", "Delete\t\tEWorldEditor.deleteMissionObject( thisObj.object );");
+               TCH.Props.Add("item[ 2 ]", "Inspect\t\tinspectObject( thisObj.object );");
+               TCH.Props.Add("item[ 3 ]", "-");
+               TCH.Props.Add("item[ 4 ]", "Toggle Lock Children\t\tEWorldEditor.toggleLockChildren( thisObj.object );");
+               TCH.Props.Add("item[ 5 ]", "Toggle Hide Children\t\tEWorldEditor.toggleHideChildren( thisObj.object );");
+               TCH.Props.Add("item[ 6 ]", "-");
+               TCH.Props.Add("item[ 7 ]", "Group\t\tEWorldEditor.addSimGroup( true );");
+               TCH.Props.Add("item[ 8 ]", "-");
+               TCH.Props.Add("item[ 9 ]", "Add New Objects Here\t\tEWCreatorWindow.setNewObjectGroup( thisObj.object );");
+               TCH.Props.Add("item[ 10 ]", "Add Children to Selection\t\tEWorldEditor.selectAllObjectsInSet( thisObj.object, false );");
+               TCH.Props.Add("item[ 11 ]", "Remove Children from Selection\t\tEWorldEditor.selectAllObjectsInSet( thisObj.object, true );");
+
+               TCH.Props.Add("object", "-1");
+               popup = TCH.Create();
+            }
+            popup["object"] = obj;
       
+            bool hasChildren = obj.getCount() > 0;
+            popup.enableItem( "10", hasChildren.AsString() );
+            popup.enableItem( "11", hasChildren.AsString() );
+      
+            haveObjectEntries = true;
+            haveLockAndHideEntries = false;
+         }
+   
+         // Open generic context menu.
+         else
+         {
+            popup = console.GetObjectID("ETContextPopup");
+            if( !popup.isObject() )
+            {
+               Torque_Class_Helper TCH = new Torque_Class_Helper("PopupMenu", "ETContextPopup");
+               TCH.Props.Add("superClass", "MenuBuilder");
+               TCH.Props.Add("isPopup", "1");
+               TCH.Props.Add("item[ 0 ]", "Rename\t\tEditorTree.showItemRenameCtrl( EditorTree.findItemByObjectId( thisObj.object ) );");
+               TCH.Props.Add("item[ 1 ]", "Delete\t\tEWorldEditor.deleteMissionObject( thisObj.object );");
+               TCH.Props.Add("item[ 2 ]", "Inspect\t\tinspectObject( thisObj.object );");
+               TCH.Props.Add("item[ 3 ]", "-");
+               TCH.Props.Add("item[ 4 ]", "Locked\t\tthisObj.object.setLocked( !thisObj.object.locked ); EWorldEditor.syncGui();");
+               TCH.Props.Add("item[ 5 ]", "Hidden\t\tEWorldEditor.hideObject( thisObj.object, !thisObj.object.hidden ); EWorldEditor.syncGui();");
+               TCH.Props.Add("item[ 6 ]", "-");
+               TCH.Props.Add("item[ 7 ]", "Group\t\tEWorldEditor.addSimGroup( true );");
+               TCH.Props.Add("object", "-1");
+               popup = TCH.Create();
+            }
+
+            // Specialized version for ConvexShapes. 
+            if( obj.isMemberOfClass( "ConvexShape" ) )
+            {
+               popup = console.GetObjectID("ETConvexShapeContextPopup");
+               if( !popup.isObject() )
+               {
+                  Torque_Class_Helper TCH = new Torque_Class_Helper("PopupMenu", "ETConvexShapeContextPopup : ETContextPopup");
+                  TCH.Props.Add("superClass", "MenuBuilder");
+                  TCH.Props.Add("isPopup", "1");
+                  TCH.Props.Add("item[ 8 ]", "-");
+                  TCH.Props.Add("item[ 9 ]", "Convert to Zone\t\tEWorldEditor.convertSelectionToPolyhedralObjects( \"Zone\" );");
+                  TCH.Props.Add("item[ 10 ]", "Convert to Portal\t\tEWorldEditor.convertSelectionToPolyhedralObjects( \"Portal\" );");
+                  TCH.Props.Add("item[ 11 ]", "Convert to Occluder\t\tEWorldEditor.convertSelectionToPolyhedralObjects( \"OcclusionVolume\" );");
+                  TCH.Props.Add("item[ 12 ]", "Convert to Sound Space\t\tEWorldEditor.convertSelectionToPolyhedralObjects( \"SFXSpace\" );");
+                  popup = TCH.Create();
+               }
+            }
+      
+            // Specialized version for polyhedral objects.
+            else if( obj.isMemberOfClass( "Zone" ) ||
+                     obj.isMemberOfClass( "Portal" ) ||
+                     obj.isMemberOfClass( "OcclusionVolume" ) ||
+                     obj.isMemberOfClass( "SFXSpace" ) )
+            {
+               popup = console.GetObjectID("ETPolyObjectContextPopup");
+               if( !popup.isObject() )
+               {
+                  Torque_Class_Helper TCH = new Torque_Class_Helper("PopupMenu", "ETPolyObjectContextPopup : ETContextPopup");
+                  TCH.Props.Add("superClass", "MenuBuilder");
+                  TCH.Props.Add("isPopup", "1");
+                  TCH.Props.Add("item[ 8 ]", "-");
+                  TCH.Props.Add("item[ 9 ]", "Convert to ConvexShape\t\tEWorldEditor.convertSelectionToConvexShape();");
+                  popup = TCH.Create();
+               }
+            }
+
+            popup["object"] = obj;
+            haveObjectEntries = true;
+         }
+
+         if( haveObjectEntries )
+         {         
+            popup.enableItem( "0", (obj.isNameChangeAllowed() && !obj.getName().Equals("MissionGroup")).AsString() );
+            popup.enableItem( "1", (!obj.getName().Equals("MissionGroup")).AsString() );
+            if( haveLockAndHideEntries )
+            {
+               popup.checkItem( "4", obj["locked"] );
+               popup.checkItem( "5", obj.hidden.AsString() );
+            }
+            popup.enableItem( "7", thisObj.isItemSelected( itemId ).AsString() );
+         }
+   
+         popup.showPopup( console.GetObjectID("Canvas").AsString() );
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "positionContextMenu", "", 2, 2500, false)]
+      public void EditorTreePositionContextMenu(coSimObject thisObj, coGuiControl menu)
+      {
+         coWorldEditor EWorldEditor = console.GetObjectID("EWorldEditor");
+         if( (menu["position"].Split(' ')[0].AsInt() + menu["extent"].Split(' ')[0]).AsInt() > EWorldEditor["extent"].Split(' ')[0].AsInt() )
+         {
+            int posx = menu["position"].Split(' ')[0].AsInt();
+            int offset = EWorldEditor["extent"].Split(' ')[0].AsInt() - (posx + menu["extent"].Split(' ')[0]).AsInt() - 5;
+            posx += offset;
+            menu["position"] = posx + " " + menu["position"].Split(' ')[1];
+         }
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "isValidDragTarget", "", 3, 2500, false)]
+      public bool EditorTreeIsValidDragTarget(coSimObject thisObj, string id, coSimObject obj)
+      {
+         coWorldEditor EWorldEditor = console.GetObjectID("EWorldEditor");
+         if( obj.isMemberOfClass( "Path" ) )
+            return EWorldEditor.call("areAllSelectedObjectsOfType", "Marker" ).AsBool();
+         if( obj.name.Equals( "CameraBookmarks" ) )
+            return EWorldEditor.call("areAllSelectedObjectsOfType", "CameraBookmark" ).AsBool();
+         else
+            return ( obj.getClassName().Equals( "SimGroup" ) );
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "onBeginReparenting", "", 1, 2500, false)]
+      public void EditorTreeOnBeginReparenting(coGuiTreeViewCtrl thisObj)
+      {
+         if( console.isObject( thisObj["reparentUndoAction"] ) )
+            ((coUndoAction)thisObj["reparentUndoAction"]).delete();
+         
+         coUndoAction action = UndoActionReparentObjectsCreate( thisObj );
+   
+         thisObj["reparentUndoAction"] = action;
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "onReparent", "", 4, 2500, false)]
+      public void EditorTreeOnReparent(coSimObject thisObj, string obj, string oldParent, string newParent)
+      {
+         UndoActionReparentObjectsAdd(thisObj["reparentUndoAction"], obj, oldParent, newParent);
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "onEndReparenting", "", 1, 2500, false)]
+      public void EditorTreeOnEndReparenting(coSimObject thisObj)
+      {
+         coUndoAction action = thisObj["reparentUndoAction"];
+         coEditManager Editor =  thisObj["Editor"];
+         thisObj["reparentUndoAction"] = "";
+         
+         if( action["numObjects"].AsInt() > 0 )
+         {
+            if( action["numObjects"].AsInt() == 1 )
+               action.actionName = "Reparent Object";
+            else
+               action.actionName = "Reparent Objects";
+         
+            action.addToManager( EditorGetUndoManager(Editor) );
+      
+            ((coWorldEditor)console.GetObjectID("EWorldEditor")).call("syncGui");
+         }
+         else
+            action.delete();
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "update", "", 1, 2500, false)]
+      public void EditorTreeUpdate(coGuiTreeViewCtrl thisObj)
+      {
+         thisObj.call("buildVisibleTree", "false" );
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "GetTooltipTSStatic", "", 2, 2500, false)]
+      public string EditorTreeGetTooltipTSStatic(coSimObject thisObj, coTSStatic obj)
+      {
+         return "Shape: " + obj.shapeName;
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "GetTooltipShapeBase", "", 2, 2500, false)]
+      public string EditorTreeGetTooltipShapeBase(coSimObject thisObj, coShapeBase obj)
+      {
+         return "Datablock: " + obj.dataBlock;
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "GetTooltipStaticShape", "", 2, 2500, false)]
+      public string EditorTreeGetTooltipStaticShape(coSimObject thisObj, coStaticShape obj)
+      {
+         return "Datablock: " + obj.dataBlock;
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "GetTooltipItem", "", 2, 2500, false)]
+      public string EditorTreeGetTooltipItem(coSimObject thisObj, coItem obj)
+      {
+         return "Datablock: " + obj.dataBlock;
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "GetTooltipRigidShape", "", 2, 2500, false)]
+      public string EditorTreeGetTooltipRigidShape(coSimObject thisObj, coRigidShape obj)
+      {
+         return "Datablock: " + obj.dataBlock;
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "GetTooltipPrefab", "", 2, 2500, false)]
+      public string EditorTreeGetTooltipPrefab(coSimObject thisObj, coPrefab obj)
+      {
+         return "File: " + obj.filename;
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "GetTooltipGroundCover", "", 2, 2500, false)]
+      public string EditorTreeGetTooltipGroundCover(coSimObject thisObj, coSceneObject obj)
+      {
+         string text = "Material: " + obj["material"];
+         for(int i=0; i<8; i++)
+         {
+            if(obj["probability["+i+"]"].AsInt() > 0 && !obj["shapeFilename["+i+"]"].Equals(""))
+            {
+               text = text + "\nShape " + i + ": " + obj["shapeFilename["+i+"]"];
+            }
+         }
+         return text;
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "GetTooltipSFXEmitter", "", 2, 2500, false)]
+      public string EditorTreeGetTooltipSFXEmitter(coSimObject thisObj, coSFXEmitter obj)
+      {
+         if(obj.fileName.Equals(""))
+            return "Track: " + obj.track;
+         else
+            return "File: " + obj.fileName;
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "GetTooltipParticleEmitterNode", "", 2, 2500, false)]
+      public string EditorTreeGetTooltipParticleEmitterNode(coSimObject thisObj, coParticleEmitterNode obj)
+      {
+         string text = "Datablock: " + obj.dataBlock;
+         text += "\nEmitter: " + obj.emitter;
+         return text;
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTree", "GetTooltipWorldEditorSelection", "", 2, 2500, false)]
+      public string EditorTreeGetTooltipWorldEditorSelection(coSimObject thisObj, coWorldEditorSelection obj)
+      {
+         string text = "Objects: " + obj.getCount();
+
+         if( !obj.getCanSave() )
+            text += "\nPersistent: No";
+         else
+            text += "\nPersistent: Yes";
+      
+         return text;
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorTreeTabBook", "onTabSelected", "", 1, 2500, false)]
+      public void EditorTreeTabBookOnTabSelected(coGuiTabBookCtrl thisObj)
+      {
+         coGuiWindowCollapseCtrl EWTreeWindow = console.GetObjectID("EWTreeWindow");
+         coGuiBitmapButtonCtrl LockSelection = EWTreeWindow.findObjectByInternalName("LockSelection", true);
+         coGuiBitmapButtonCtrl DeleteSelection = EWTreeWindow.findObjectByInternalName("DeleteSelection", true);
+         coGuiBitmapButtonCtrl AddSimGroup = EWTreeWindow.findObjectByInternalName("AddSimGroup", true);
+         if( thisObj.getSelectedPage() == 0)
+         {
+            DeleteSelection.visible = true;
+            LockSelection.visible = true;
+            AddSimGroup.visible = true;
+         }
+         else
+         {
+            DeleteSelection.visible = false;
+            LockSelection.visible = false;
+            AddSimGroup.visible = false;
+         }
+      }
+      [Torque_Decorations.TorqueCallBack("", "Editor", "open", "", 1, 2500, false)]
+      public void EditorOpen(coEditManager thisObj)
+      {
+         coGuiCanvas Canvas = console.GetObjectID("Canvas");
+         coGuiContainer EditorGui = console.GetObjectID("EditorGui");
+         // prevent the mission editor from opening while the GuiEditor is open.
+         if(Canvas.getContent() == console.GetObjectID("GuiEditorGui"))
+            return;
+      
+         if( !EditorGui["isInitialized"].AsBool() )
+            EditorGuiInit(EditorGui);
+         
+         thisObj.call("editorEnabled");
+         Canvas.setContent(EditorGui);
+         EditorGuiSyncCameraGui(EditorGui);
+      }
+      [Torque_Decorations.TorqueCallBack("", "Editor", "close", "", 2, 2500, false)]
+      public void EditorClose(coSimObject thisObj, coGuiControl gui)
+      {
+         thisObj.call("editorDisabled");
+         ((coGuiCanvas)console.GetObjectID("Canvas")).setContent(gui);
+         coGuiControl MessageHud = console.GetObjectID("MessageHud");
+         if(console.isObject(MessageHud))
+            MessageHud.call("close");
+         EditorGuiWriteCameraSettings(console.GetObjectID("EditorGui"));
+      }
+      [Torque_Decorations.TorqueCallBack("", "", " EditorLightingComplete", "", 0, 2500, false)]
+      public void  EditorLightingComplete()
+      {
+         bGlobal["$lightingMission"] = false;
+         ((coGuiControl)console.GetObjectID("RelightStatus")).visible = false;
+   
+         if (!sGlobal["$RelightCallback"].Equals(""))
+         {
+            console.Eval(sGlobal["$RelightCallback"]);
+         }
+   
+         sGlobal["$RelightCallback"] = "";
+      }
+      [Torque_Decorations.TorqueCallBack("", "", " updateEditorLightingProgress", "", 0, 2500, false)]
+      public void updateEditorLightingProgress()
+      {
+         ((coGuiProgressBitmapCtrl)console.GetObjectID("RelightProgress")).setValue(sGlobal["$SceneLighting::lightingProgress"]);
+         if (bGlobal["$lightingMission"])
+            iGlobal["$lightingProgressThread"] = Util._schedule("1", "0", "updateEditorLightingProgress");
+      }
+      [Torque_Decorations.TorqueCallBack("", "Editor", "lightScene", "", 3, 2500, false)]
+      public void EditorLightScene(coSimObject thisObj, string callback, string forceAlways)
+      {
+         if (bGlobal["$lightingMission"])
+            return;
+      
+         bGlobal["$lightingMission"] = true;
+         sGlobal["$RelightCallback"] = callback;
+         ((coGuiControl)console.GetObjectID("RelightStatus")).visible = true;
+         ((coGuiProgressBitmapCtrl)console.GetObjectID("RelightProgress")).setValue("0");
+         ((coGuiCanvas)console.GetObjectID("Canvas")).repaint(0);
+         Util.lightScene("EditorLightingComplete", forceAlways);
+         updateEditorLightingProgress();
+      } 
+      [Torque_Decorations.TorqueCallBack("", "EditorGui", "handleEscape", "", 1, 2500, false)]
+      public void EditorGuiHandleEscape(coSimObject thisObj)
+      {
+         bool result = false;
+         if ( console.isObject( thisObj["currentEditor"] ) )
+            result = ((coSimObject)thisObj["currentEditor"]).call("handleEscape").AsBool();
+      
+         if ( !result )
+         {
+            EditorClose(console.GetObjectID("Editor"), "PlayGui");
+         }
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditTSCtrl", "updateGizmoMode", "", 2, 2500, false)]
+      public void EditTSCtrlUpdateGizmoMode(coSimObject thisObj, GizmoMode mode)
+      {
+         coGuiControl EditorGuiToolbar = console.GetObjectID("EditorGuiToolbar");
+         coGuiButtonCtrl NoneModeBtn = EditorGuiToolbar.findObjectByInternalName("NoneModeBtn", false);
+         coGuiButtonCtrl MoveModeBtn = EditorGuiToolbar.findObjectByInternalName("MoveModeBtn", false);
+         coGuiButtonCtrl RotateModeBtn = EditorGuiToolbar.findObjectByInternalName("RotateModeBtn", false);
+         coGuiButtonCtrl ScaleModeBtn = EditorGuiToolbar.findObjectByInternalName("ScaleModeBtn", false);
+         // Called when the gizmo mode is changed from C++
+   
+         if ( mode == GizmoMode.NoneMode )
+            NoneModeBtn.performClick();
+         else if ( mode == GizmoMode.MoveMode )   
+            MoveModeBtn.performClick();
+         else if ( mode == GizmoMode.RotateMode )
+            RotateModeBtn.performClick();
+         else if ( mode == GizmoMode.ScaleMode )
+            ScaleModeBtn.performClick();
       }
 
-    }
+   }
 }
