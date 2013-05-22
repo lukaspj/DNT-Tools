@@ -2150,7 +2150,7 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
       [Torque_Decorations.TorqueCallBack("", "EditTSCtrl", "updateGizmoMode", "", 2, 2500, false)]
       public void EditTSCtrlUpdateGizmoMode(coSimObject thisObj, GizmoMode mode)
       {
-         coGuiControl EditorGuiToolbar = console.GetObjectID("EditorGuiToolbar");
+         coGuiControl EditorGuiToolbar = "EditorGuiToolbar";
          coGuiButtonCtrl NoneModeBtn = EditorGuiToolbar.findObjectByInternalName("NoneModeBtn", false);
          coGuiButtonCtrl MoveModeBtn = EditorGuiToolbar.findObjectByInternalName("MoveModeBtn", false);
          coGuiButtonCtrl RotateModeBtn = EditorGuiToolbar.findObjectByInternalName("RotateModeBtn", false);
@@ -2166,6 +2166,175 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
          else if ( mode == GizmoMode.ScaleMode )
             ScaleModeBtn.performClick();
       }
+        [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "syncGui", "", 1, 2500, false)]
+        public void EWorldEditorSyncGui(coWorldEditor thisObj)
+        {
+            coWorldEditor EWorldEditor = "EWorldEditor";
+            EWorldEditorSyncToolPalette(EWorldEditor);
+            coGuiTreeViewCtrl EditorTree = "EditorTree";
+            coEditManager Editor = "Editor";
+            coGuiControl EditorGui = "EditorGui";
+            coGuiControl EditMenu = ((coGuiControl)EditorGui["menuBar"]).findObjectByInternalName("EditMenu", true);
+            EditorTreeUpdate(EditorTree);
+           ((coUndoManager)Editor.call("getUndoManager")).call("updateUndoMenu", EditMenu );
+           ((coGuiControl)"EditorGuiStatusBar").call("setSelectionObjectsByCount", thisObj.getSelectionSize().AsString() );
+   
+           ((coGuiBitmapButtonCtrl)((coGuiWindowCollapseCtrl)"EWTreeWindow").findObjectByInternalName("LockSelection", true)).setStateOn( thisObj.call("getSelectionLockCount").AsInt() > 0 );
+            coGuiControl EWorldEditorToolbar = "EWorldEditorToolbar";
+           ((coGuiBitmapButtonCtrl)EWorldEditorToolbar.findObjectByInternalName("boundingBoxColBtn", true)).setStateOn( EWorldEditor.boundingBoxCollision );
+            
+
+            coGuiBitmapButtonCtrl centerObject = EWorldEditorToolbar.findObjectByInternalName("centerObject", true);
+           if( EWorldEditor.objectsUseBoxCenter )
+           {
+              centerObject.setBitmap("tools/gui/images/menubar/bounds-center");
+               ((coGuiBitmapButtonCtrl)((coGuiControl)"objectCenterDropdown").findObjectByInternalName("objectBoundsBtn", true)).setStateOn(true);
+           }
+           else
+           {
+              centerObject.setBitmap("tools/gui/images/menubar/object-center");
+               ((coGuiBitmapButtonCtrl)((coGuiControl)"objectCenterDropdown").findObjectByInternalName("objectBoxBtn", true)).setStateOn(true);
+           }
+            
+            coGuiBitmapButtonCtrl objectTransform = EWorldEditorToolbar.findObjectByInternalName("objectTransform", true);
+           if( ((coGizmoProfile)"GlobalGizmoProfile").getFieldValue(alignment).Equals("Object") )
+           {
+              objectTransform.setBitmap("tools/gui/images/menubar/object-transform");
+              ((coGuiBitmapButtonCtrl)((coGuiControl)"objectTransformDropdown").findObjectByInternalName("objectTransformBtn", true)).setStateOn( true );
+      
+           }
+           else
+           {
+              objectTransform.setBitmap("tools/gui/images/menubar/world-transform");
+              ((coGuiBitmapButtonCtrl)((coGuiControl)"objectTransformDropdown").findObjectByInternalName("worldTransformBtn", true)).setStateOn( true );
+           }
+   
+           ((coGuiBitmapButtonCtrl)EWorldEditorToolbar.findObjectByInternalName("renderHandleBtn", true)).setStateOn( EWorldEditor.renderObjHandle );
+           ((coGuiBitmapButtonCtrl)EWorldEditorToolbar.findObjectByInternalName("renderTextBtn", true)).setStateOn( EWorldEditor.renderObjText );
+
+           ((coGuiBitmapButtonCtrl)((coGuiControl)"SnapToBar").findObjectByInternalName("objectSnapBtn", true)).setStateOn( EWorldEditor.getSoftSnap() );
+           ((coGuiTextEditCtrl)EWorldEditorToolbar.findObjectByInternalName("softSnapSizeTextEdit", true)).setText( EWorldEditor.getSoftSnapSize().AsString() );
+            coGuiWindowCollapseCtrl ESnapOptions = "ESnapOptions";
+           ((coGuiTextEditCtrl)ESnapOptions.findObjectByInternalName("SnapSize", true)).setText( EWorldEditor.getSoftSnapSize().AsString() );
+           ((coGuiTextEditCtrl)ESnapOptions.findObjectByInternalName("GridSize", true)).setText( EWorldEditor.call("getGridSize") );
+   
+           ((coGuiBitmapButtonCtrl)ESnapOptions.findObjectByInternalName("GridSnapButton", true)).setStateOn( thisObj.call("getGridSnap").AsBool() );
+           ((coGuiBitmapButtonCtrl)((coGuiControl)"SnapToBar").findObjectByInternalName("objectGridSnapBtn", true)).setStateOn( thisObj.call("getGridSnap").AsBool() );
+           ((coGuiBitmapButtonCtrl)ESnapOptions.findObjectByInternalName("NoSnapButton", true)).setStateOn( !thisObj.stickToGround && !thisObj.getSoftSnap() && !thisObj.call("getGridSnap") );
+        }
+        [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "syncToolPalette", "", 1, 2500, false)]
+        public void EWorldEditorSyncToolPalette(coSimObject thisObj)
+        {
+           switch ( ((coGizmoProfile)"GlobalGizmoProfile").mode )
+           {
+              case GizmoMode.NoneMode:
+                 ((coGuiBitmapButtonCtrl)"EWorldEditorNoneModeBtn").performClick();
+                   break;
+              case GizmoMode.MoveMode:
+                 ((coGuiBitmapButtonCtrl)"EWorldEditorMoveModeBtn").performClick();
+                   break;
+              case GizmoMode.RotateMode:
+                 ((coGuiBitmapButtonCtrl)"EWorldEditorRotateModeBtn").performClick();
+                   break;
+              case GizmoMode.ScaleMode:
+                 ((coGuiBitmapButtonCtrl)"EWorldEditorScaleModeBtn").performClick();
+                   break;
+           }
+        }
+        [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "addSimGroup", "", 2, 2500, false)]
+        public void EWorldEditorAddSimGroup(coWorldEditor thisObj, bool groupCurrentSelection)
+        {
+           coSimGroup activeSelection = thisObj.call("getActiveSelection");
+           if ( activeSelection.getObjectIndex( "MissionGroup" ) != -1 )
+           {
+              console.Call("MessageBoxOK", "Error", "Cannot add MissionGroup to a new SimGroup" );
+              return;
+           }
+
+           // Find our parent.
+
+           coSimObject parent = "MissionGroup";
+           if( !groupCurrentSelection && console.isObject( activeSelection ) && activeSelection.getCount() > 0 )
+           {
+              coSimObject firstSelectedObject = activeSelection.getObject( 0 );
+              if( firstSelectedObject.isMemberOfClass( "SimGroup" ) )
+                 parent = firstSelectedObject;
+              else if( firstSelectedObject.getId() != ((coSimGroup)"MissionGroup").getId() )
+                 parent = firstSelectedObject.parentGroup;
+           }
+   
+           // If we are about to do a group-selected as well,
+           // starting recording an undo compound.
+            coEditManager Editor = "Editor";
+           if( groupCurrentSelection )
+              ((coUndoManager)Editor.call("getUndoManager")).pushCompound( "Group Selected" );
+   
+           // Create the SimGroup.
+   
+           coSimGroup obj = new Torque_Class_Helper("SimGroup").Create();
+            obj.parentGroup = parent;
+            console.Call_Classname("MECreateUndoAction", "submit", obj);
+   
+           // Put selected objects into the group, if requested.
+   
+           if( groupCurrentSelection && console.isObject( activeSelection ) )
+           {
+              coUndoScriptAction undo = UndoActionReparentObjectsCreate( "EditorTree" );
+      
+              int numObjects = activeSelection.getCount();
+              for( uint i = 0; i < numObjects; i ++ )
+              {
+                 coSimObject sel = activeSelection.getObject( i );
+                 undo.call("add", sel, sel.parentGroup, obj );
+                 obj.add( sel );
+              }
+      
+              undo.addToManager( Editor.call("getUndoManager") );
+           }
+      
+           // Stop recording for group-selected.
+   
+           if( groupCurrentSelection )
+              ((coUndoManager)Editor.call("getUndoManager")).popCompound();
+   
+           // When not grouping selection, make the newly created SimGroup the
+           // current selection.
+            coWorldEditor EWorldEditor = "EWorldEditor";
+           if( !groupCurrentSelection )
+           {
+              EWorldEditor.clearSelection();
+              EWorldEditor.selectObject( object );
+           }
+
+           // Refresh the Gui.
+            EWorldEditorSyncGui(thisObj);
+        }
+        [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "toggleLockChildren", "", 2, 2500, false)]
+        public void EWorldEditorToggleLockChildren(coSimObject thisObj, coSimGroup simGroup)
+        {
+           foreach( child in simGroup )
+           {
+              if( child.isMemberOfClass( "SimGroup" ) )
+                 thisObj.toggleLockChildren( child );
+              else
+                 child.setLocked( !child.locked );
+           }
+   
+           EWorldEditor.syncGui();
+        }
+        [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "toggleHideChildren", "", 2, 2500, false)]
+        public void EWorldEditorToggleHideChildren(coSimObject thisObj, string simGroup)
+        {
+           foreach( child in simGroup )
+           {
+              if( child.isMemberOfClass( "SimGroup" ) )
+                 thisObj.toggleHideChildren( child );
+              else
+                 thisObj.hideObject( child, !child.hidden );
+           }
+   
+           EWorldEditor.syncGui();
+        }
 
    }
 }
