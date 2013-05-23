@@ -2312,29 +2312,492 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
         [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "toggleLockChildren", "", 2, 2500, false)]
         public void EWorldEditorToggleLockChildren(coSimObject thisObj, coSimGroup simGroup)
         {
-           foreach( child in simGroup )
+           for(int i = 0; i < simGroup.getCount(); i++)
            {
+              coSimObject child = simGroup.getObject(child);
               if( child.isMemberOfClass( "SimGroup" ) )
-                 thisObj.toggleLockChildren( child );
+                 EWorldEditorToggleLockChildren(thisObj, child);
               else
-                 child.setLocked( !child.locked );
+                 child.setLocked( !child["locked"].AsBool() );
            }
-   
-           EWorldEditor.syncGui();
+            EWorldEditorSyncGui("EWorldEditor");
         }
         [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "toggleHideChildren", "", 2, 2500, false)]
-        public void EWorldEditorToggleHideChildren(coSimObject thisObj, string simGroup)
+        public void EWorldEditorToggleHideChildren(coSimObject thisObj, coSimGroup simGroup)
         {
-           foreach( child in simGroup )
+           for(int i = 0; i < simGroup.getCount(); i++)
            {
+              coSimObject child = simGroup.getObject(child);
               if( child.isMemberOfClass( "SimGroup" ) )
-                 thisObj.toggleHideChildren( child );
+                 EWorldEditorToggleHideChildren(thisObj, child);
               else
-                 thisObj.hideObject( child, !child.hidden );
+                 thisObj.call("hideObject", child, (!child.hidden).AsString() );
            }
-   
-           EWorldEditor.syncGui();
+            EWorldEditorSyncGui("EWorldEditor");
         }
+       [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "convertSelectionToPolyhedralObjects", "", 2, 2500, false)]
+      public void EWorldEditorConvertSelectionToPolyhedralObjects(coSimObject thisObj, string className)
+      {
+         group = thisObj.getNewObjectGroup();
+         undoManager = Editor.getUndoManager();
+   
+         activeSelection = thisObj.getActiveSelection();
+         while( activeSelection.getCount() != 0 )
+         {
+            oldObject = activeSelection.getObject( 0 );
+            newObject = thisObj.createPolyhedralObject( className, oldObject );
+            if( console.isObject( newObject ) )
+            {
+               undoManager.pushCompound( "Convert ConvexShape to " @ className );
+               newObject.parentGroup = oldObject.parentGroup;
+               MECreateUndoAction::submit( newObject );
+               MEDeleteUndoAction::submit( oldObject );
+               undoManager.popCompound();
+            }
+         }
+      }
+      [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "convertSelectionToConvexShape", "", 1, 2500, false)]
+      public void EWorldEditorConvertSelectionToConvexShape(coSimObject thisObj)
+      {
+         group = thisObj.getNewObjectGroup();
+         undoManager = Editor.getUndoManager();
+   
+         activeSelection = thisObj.getActiveSelection();
+         while( activeSelection.getCount() != 0 )
+         {
+            oldObject = activeSelection.getObject( 0 );
+            newObject = thisObj.createConvexShapeFrom( oldObject );
+            if( console.isObject( newObject ) )
+            {
+               undoManager.pushCompound( "Convert " @ oldObject.getClassName() @ " to ConvexShape" );
+               newObject.parentGroup = oldObject.parentGroup;
+               MECreateUndoAction::submit( newObject );
+               MEDeleteUndoAction::submit( oldObject );
+               undoManager.popCompound();
+            }
+         }
+      }
+      [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "getNewObjectGroup", "", 1, 2500, false)]
+      public void EWorldEditorGetNewObjectGroup(coSimObject thisObj)
+      {
+         return EWCreatorWindow.getNewObjectGroup();
+      }
+      [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "deleteMissionObject", "", 2, 2500, false)]
+      public void EWorldEditorDeleteMissionObject(coSimObject thisObj, string object)
+      {
+         // Unselect in editor tree.
+   
+         id = EditorTree.findItemByObjectId( object );   
+         EditorTree.selectItem( id, false );
+   
+         // Delete object.
+   
+         MEDeleteUndoAction::submit( object );
+         EWorldEditor.isDirty = true;
+         EditorTree.buildVisibleTree( true );
+      }
+      [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "selectAllObjectsInSet", "", 3, 2500, false)]
+      public void EWorldEditorSelectAllObjectsInSet(coSimObject thisObj, string set, string deselect)
+      {
+         if( !console.isObject( set ) )
+            return;
+      
+         foreach( obj in set )
+         {
+            if( deselect )
+               thisObj.unselectObject( obj );
+            else
+               thisObj.selectObject( obj );
+         }
+      }
+      [Torque_Decorations.TorqueCallBack("", "", " toggleSnappingOptions", "", 1, 2500, false)]
+      public void  toggleSnappingOptions(string var)
+      {
+         if( SnapToBar->objectSnapDownBtn.getValue() && SnapToBar->objectSnapBtn.getValue() )
+         {
+            if( var $= "terrain" )
+            {
+               EWorldEditor.stickToGround = 1;
+               EWorldEditor.setSoftSnap(false);
+               ESnapOptionsTabBook.selectPage(0);
+               SnapToBar->objectSnapBtn.setStateOn(0);
+            }
+            else
+            { 
+               // soft snapping
+               EWorldEditor.stickToGround = 0;
+               EWorldEditor.setSoftSnap(true);
+               ESnapOptionsTabBook.selectPage(1);
+               SnapToBar->objectSnapDownBtn.setStateOn(0);
+            }
+         }
+         else if( var $= "terrain" && EWorldEditor.stickToGround == 0 )
+         {
+            // Terrain Snapping
+            EWorldEditor.stickToGround = 1;
+            EWorldEditor.setSoftSnap(false);
+            ESnapOptionsTabBook.selectPage(0);
+            SnapToBar->objectSnapDownBtn.setStateOn(1);
+            SnapToBar->objectSnapBtn.setStateOn(0);
+      
+         }
+         else if( var $= "soft" && EWorldEditor.getSoftSnap() == false )
+         { 
+            // Object Snapping
+            EWorldEditor.stickToGround = 0;
+            EWorldEditor.setSoftSnap(true);
+            ESnapOptionsTabBook.selectPage(1);
+            SnapToBar->objectSnapBtn.setStateOn(1);
+            SnapToBar->objectSnapDownBtn.setStateOn(0);
+      
+         }
+         else if( var $= "grid" )
+         {
+            EWorldEditor.setGridSnap( !EWorldEditor.getGridSnap() );
+         }
+         else
+         { 
+            // No snapping.
+      
+            EWorldEditor.stickToGround = false;
+            EWorldEditor.setGridSnap( false );
+            EWorldEditor.setSoftSnap( false );
+      
+            SnapToBar->objectSnapDownBtn.setStateOn(0);
+            SnapToBar->objectSnapBtn.setStateOn(0);
+         }
+   
+         EWorldEditor.syncGui();
+      }
+      [Torque_Decorations.TorqueCallBack("", "objectCenterDropdown", "toggle", "", 1, 2500, false)]
+      public void objectCenterDropdownToggle(string )
+      {
+         if ( objectCenterDropdown.visible  )
+         {
+            EWorldEditorToolbar-->centerObject.setStateOn(false);
+            objectCenterDropdownDecoy.setVisible(false);
+            objectCenterDropdownDecoy.setActive(false);
+            objectCenterDropdown.setVisible(false);
+         }
+         else
+         {
+            EWorldEditorToolbar-->centerObject.setStateOn(true);
+            objectCenterDropdown.setVisible(true);
+            objectCenterDropdownDecoy.setActive(true);
+            objectCenterDropdownDecoy.setVisible(true);
+         }
+      }
+      [Torque_Decorations.TorqueCallBack("", "objectTransformDropdown", "toggle", "", 1, 2500, false)]
+      public void objectTransformDropdownToggle(string )
+      {
+         if ( objectTransformDropdown.visible  )
+         {
+            EWorldEditorToolbar-->objectTransform.setStateOn(false);
+            objectTransformDropdownDecoy.setVisible(false);
+            objectTransformDropdownDecoy.setActive(false);
+            objectTransformDropdown.setVisible(false);
+         }
+         else
+         {
+            EWorldEditorToolbar-->objectTransform.setStateOn(true);
+            objectTransformDropdown.setVisible(true);
+            objectTransformDropdownDecoy.setActive(true);
+            objectTransformDropdownDecoy.setVisible(true);
+         }
+      }
+      [Torque_Decorations.TorqueCallBack("", "objectSnapDropdownDecoy", "onMouseLeave", "", 1, 2500, false)]
+      public void objectSnapDropdownDecoyOnMouseLeave(string )
+      {
+         objectSnapDropdown.toggle();
+      }
+      [Torque_Decorations.TorqueCallBack("", "objectCenterDropdownDecoy", "onMouseLeave", "", 1, 2500, false)]
+      public void objectCenterDropdownDecoyOnMouseLeave(string )
+      {
+         objectCenterDropdown.toggle();
+      }
+      [Torque_Decorations.TorqueCallBack("", "objectTransformDropdownDecoy", "onMouseLeave", "", 1, 2500, false)]
+      public void objectTransformDropdownDecoyOnMouseLeave(string )
+      {
+         objectTransformDropdown.toggle();
+      }
+      [Torque_Decorations.TorqueCallBack("", "EWAddSimGroupButton", "onDefaultClick", "", 1, 2500, false)]
+      public void EWAddSimGroupButtonOnDefaultClick(coSimObject thisObj)
+      {
+         EWorldEditor.addSimGroup();
+      }
+      [Torque_Decorations.TorqueCallBack("", "EWAddSimGroupButton", "onCtrlClick", "", 1, 2500, false)]
+      public void EWAddSimGroupButtonOnCtrlClick(coSimObject thisObj)
+      {
+         EWorldEditor.addSimGroup( true );
+      }
+      [Torque_Decorations.TorqueCallBack("", "EWToolsToolbar", "reset", "", 1, 2500, false)]
+      public void EWToolsToolbarReset(coSimObject thisObj)
+      {
+         count = ToolsToolbarArray.getCount();
+         for( i = 0 ; i < count; i++ )
+            ToolsToolbarArray.getObject(i).setVisible(true);
+
+         thisObj.setExtent((29 + 4) * count + 12, 33);
+         thisObj.isClosed = 0;
+         EWToolsToolbar.isDynamic = 0;
+      
+         EWToolsToolbarDecoy.setVisible(false);
+         EWToolsToolbarDecoy.setExtent((29 + 4) * count + 4, 31);
+
+        thisObj-->resizeArrow.setBitmap( "tools/gui/images/collapse-toolbar" );
+      }
+      [Torque_Decorations.TorqueCallBack("", "EWToolsToolbar", "toggleSize", "", 2, 2500, false)]
+      public void EWToolsToolbarToggleSize(coSimObject thisObj, string useDynamics)
+      {
+         // toggles the size of the tooltoolbar. also goes through 
+         // and hides each control not currently selected. we hide the controls
+         // in a very neat, spiffy way
+
+         if ( thisObj.isClosed == 0 )
+         {
+            image = "tools/gui/images/expand-toolbar";
+      
+            for( i = 0 ; i < ToolsToolbarArray.getCount(); i++ )
+            {
+               if( ToolsToolbarArray.getObject(i).getValue() != 1 )
+                  ToolsToolbarArray.getObject(i).setVisible(false);
+            }
+         
+            thisObj.setExtent(43, 33);
+            thisObj.isClosed = 1;
+      
+            if(!useDynamics)
+            {
+               EWToolsToolbarDecoy.setVisible(true);
+               EWToolsToolbar.isDynamic = 1;
+            }
+         
+            EWToolsToolbarDecoy.setExtent(35, 31);
+         }
+         else
+         {
+            image = "tools/gui/images/collapse-toolbar";
+
+            count = ToolsToolbarArray.getCount();
+            for( i = 0 ; i < count; i++ )
+               ToolsToolbarArray.getObject(i).setVisible(true);
+      
+            thisObj.setExtent((29 + 4) * count + 12, 33);
+            thisObj.isClosed = 0;
+      
+            if(!useDynamics)
+            {
+               EWToolsToolbarDecoy.setVisible(false);
+               EWToolsToolbar.isDynamic = 0;
+            }
+
+            EWToolsToolbarDecoy.setExtent((29 + 4) * count + 4, 32);
+         }
+
+        thisObj-->resizeArrow.setBitmap( image );
+  
+      }
+      [Torque_Decorations.TorqueCallBack("", "EWToolsToolbarDecoy", "onMouseEnter", "", 1, 2500, false)]
+      public void EWToolsToolbarDecoyOnMouseEnter(coSimObject thisObj)
+      {
+         EWToolsToolbar.toggleSize(true);
+      }
+      [Torque_Decorations.TorqueCallBack("", "EWToolsToolbarDecoy", "onMouseLeave", "", 1, 2500, false)]
+      public void EWToolsToolbarDecoyOnMouseLeave(coSimObject thisObj)
+      {
+         EWToolsToolbar.toggleSize(true);
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorGuiStatusBar", "reset", "", 1, 2500, false)]
+      public void EditorGuiStatusBarReset(coSimObject thisObj)
+      {
+         EWorldEditorStatusBarInfo.clearInfo();
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorGuiStatusBar", "getInfo", "", 1, 2500, false)]
+      public void EditorGuiStatusBarGetInfo(coSimObject thisObj)
+      {
+         return EWorldEditorStatusBarInfo.getValue();
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorGuiStatusBar", "setInfo", "", 2, 2500, false)]
+      public void EditorGuiStatusBarSetInfo(coSimObject thisObj, string text)
+      {
+         EWorldEditorStatusBarInfo.setText(text);
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorGuiStatusBar", "clearInfo", "", 1, 2500, false)]
+      public void EditorGuiStatusBarClearInfo(coSimObject thisObj)
+      {
+         EWorldEditorStatusBarInfo.setText("");
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorGuiStatusBar", "getSelection", "", 1, 2500, false)]
+      public void EditorGuiStatusBarGetSelection(coSimObject thisObj)
+      {
+         return EWorldEditorStatusBarSelection.getValue();
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorGuiStatusBar", "setSelection", "", 2, 2500, false)]
+      public void EditorGuiStatusBarSetSelection(coSimObject thisObj, string text)
+      {
+         EWorldEditorStatusBarSelection.setText(text);
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorGuiStatusBar", "setSelectionObjectsByCount", "", 2, 2500, false)]
+      public void EditorGuiStatusBarSetSelectionObjectsByCount(coSimObject thisObj, string count)
+      {
+         text = " objects selected";
+         if(count == 1)
+            text = " object selected";
+
+         EWorldEditorStatusBarSelection.setText(count @ text);
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorGuiStatusBar", "clearSelection", "", 1, 2500, false)]
+      public void EditorGuiStatusBarClearSelection(coSimObject thisObj)
+      {
+         EWorldEditorStatusBarSelection.setText("");
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorGuiStatusBar", "getCamera", "", 1, 2500, false)]
+      public void EditorGuiStatusBarGetCamera(coSimObject thisObj)
+      {
+         return EWorldEditorStatusBarCamera.getText();
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorGuiStatusBar", "setCamera", "", 2, 2500, false)]
+      public void EditorGuiStatusBarSetCamera(coSimObject thisObj, string text)
+      {
+         id = EWorldEditorStatusBarCamera.findText( text );
+         if( id != -1 )
+         {
+            if ( EWorldEditorStatusBarCamera.getSelected() != id )
+               EWorldEditorStatusBarCamera.setSelected( id, true );
+         }
+      }
+      [Torque_Decorations.TorqueCallBack("", "EWorldEditorStatusBarCamera", "onWake", "", 1, 2500, false)]
+      public void EWorldEditorStatusBarCameraOnWake(coSimObject thisObj)
+      {
+         thisObj.add( "Standard Camera" );
+         thisObj.add( "1st Person Camera" );
+         thisObj.add( "3rd Person Camera" );
+         thisObj.add( "Orbit Camera" );
+         thisObj.add( "Top View" );
+         thisObj.add( "Bottom View" );
+         thisObj.add( "Left View" );
+         thisObj.add( "Right View" );
+         thisObj.add( "Front View" );
+         thisObj.add( "Back View" );
+         thisObj.add( "Isometric View" );
+         thisObj.add( "Smooth Camera" );
+         thisObj.add( "Smooth Rot Camera" );
+      }
+      [Torque_Decorations.TorqueCallBack("", "EWorldEditorStatusBarCamera", "onSelect", "", 3, 2500, false)]
+      public void EWorldEditorStatusBarCameraOnSelect(coSimObject thisObj, string id, string text)
+      {
+         switch$( text )
+         {
+            case "Top View":
+               commandToServer( 'SetEditorCameraStandard' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypeTop );
+
+            case "Bottom View":
+               commandToServer( 'SetEditorCameraStandard' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypeBottom );
+
+            case "Left View":
+               commandToServer( 'SetEditorCameraStandard' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypeLeft );
+
+            case "Right View":
+               commandToServer( 'SetEditorCameraStandard' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypeRight );
+
+            case "Front View":
+               commandToServer( 'SetEditorCameraStandard' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypeFront );
+
+            case "Back View":
+               commandToServer( 'SetEditorCameraStandard' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypeBack );
+
+            case "Isometric View":
+               commandToServer( 'SetEditorCameraStandard' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypeIsometric );
+
+            case "Standard Camera":
+               commandToServer( 'SetEditorCameraStandard' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypePerspective );
+
+            case "1st Person Camera":
+               commandToServer( 'SetEditorCameraPlayer' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypePerspective );
+
+            case "3rd Person Camera":
+               commandToServer( 'SetEditorCameraPlayerThird' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypePerspective );
+
+            case "Orbit Camera":
+               commandToServer( 'SetEditorOrbitCamera' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypePerspective );
+
+            case "Smooth Camera":
+               commandToServer( 'SetEditorCameraNewton' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypePerspective );
+
+            case "Smooth Rot Camera":
+               commandToServer( 'SetEditorCameraNewtonDamped' );
+               EditorGui.setDisplayType( $EditTsCtrl::DisplayTypePerspective );
+         }
+      }
+      [Torque_Decorations.TorqueCallBack("", "softSnapSizeSliderCtrlContainer", "onWake", "", 1, 2500, false)]
+      public void softSnapSizeSliderCtrlContainerOnWake(coSimObject thisObj)
+      {
+         thisObj-->slider.setValue(EWorldEditorToolbar-->softSnapSizeTextEdit.getValue());
+      }
+      [Torque_Decorations.TorqueCallBack("", "PaintBrushSizeSliderCtrlContainer", "onWake", "", 1, 2500, false)]
+      public void PaintBrushSizeSliderCtrlContainerOnWake(coSimObject thisObj)
+      {
+         thisObj-->slider.range = "1" SPC getWord(ETerrainEditor.maxBrushSize, 0);
+         thisObj-->slider.setValue(PaintBrushSizeTextEditContainer-->textEdit.getValue());
+      }
+      [Torque_Decorations.TorqueCallBack("", "PaintBrushPressureSliderCtrlContainer", "onWake", "", 1, 2500, false)]
+      public void PaintBrushPressureSliderCtrlContainerOnWake(coSimObject thisObj)
+      {
+         thisObj-->slider.setValue(PaintBrushPressureTextEditContainer-->textEdit.getValue() / 100);
+      }
+      [Torque_Decorations.TorqueCallBack("", "PaintBrushSoftnessSliderCtrlContainer", "onWake", "", 1, 2500, false)]
+      public void PaintBrushSoftnessSliderCtrlContainerOnWake(coSimObject thisObj)
+      {
+         thisObj-->slider.setValue(PaintBrushSoftnessTextEditContainer-->textEdit.getValue() / 100);
+      }
+      [Torque_Decorations.TorqueCallBack("", "TerrainBrushSizeSliderCtrlContainer", "onWake", "", 1, 2500, false)]
+      public void TerrainBrushSizeSliderCtrlContainerOnWake(coSimObject thisObj)
+      {
+         thisObj-->slider.range = "1" SPC getWord(ETerrainEditor.maxBrushSize, 0);
+         thisObj-->slider.setValue(TerrainBrushSizeTextEditContainer-->textEdit.getValue());
+      }
+      [Torque_Decorations.TorqueCallBack("", "TerrainBrushPressureSliderCtrlContainer", "onWake", "", 1, 2500, false)]
+      public void TerrainBrushPressureSliderCtrlContainerOnWake(coSimObject thisObj)
+      {
+         thisObj-->slider.setValue(TerrainBrushPressureTextEditContainer-->textEdit.getValue() / 100.0);
+      }
+      [Torque_Decorations.TorqueCallBack("", "TerrainBrushSoftnessSliderCtrlContainer", "onWake", "", 1, 2500, false)]
+      public void TerrainBrushSoftnessSliderCtrlContainerOnWake(coSimObject thisObj)
+      {
+         thisObj-->slider.setValue(TerrainBrushSoftnessTextEditContainer-->textEdit.getValue() / 100.0);
+      }
+      [Torque_Decorations.TorqueCallBack("", "TerrainSetHeightSliderCtrlContainer", "onWake", "", 1, 2500, false)]
+      public void TerrainSetHeightSliderCtrlContainerOnWake(coSimObject thisObj)
+      {
+         thisObj-->slider.setValue(TerrainSetHeightTextEditContainer-->textEdit.getValue());
+      }
+      [Torque_Decorations.TorqueCallBack("", "CameraSpeedDropdownCtrlContainer", "onWake", "", 1, 2500, false)]
+      public void CameraSpeedDropdownCtrlContainerOnWake(coSimObject thisObj)
+      {
+         thisObj-->slider.setValue(CameraSpeedDropdownContainer-->textEdit.getText());
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorDropdownSliderContainer", "onMouseDown", "", 1, 2500, false)]
+      public void EditorDropdownSliderContainerOnMouseDown(coSimObject thisObj)
+      {
+         Canvas.popDialog(thisObj);
+      }
+      [Torque_Decorations.TorqueCallBack("", "EditorDropdownSliderContainer", "onRightMouseDown", "", 1, 2500, false)]
+      public void EditorDropdownSliderContainerOnRightMouseDown(coSimObject thisObj)
+      {
+         Canvas.popDialog(thisObj);
+      }
 
    }
 }
