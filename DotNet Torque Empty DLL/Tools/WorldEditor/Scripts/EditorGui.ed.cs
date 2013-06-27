@@ -2312,12 +2312,11 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
         [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "toggleLockChildren", "", 2, 2500, false)]
         public void EWorldEditorToggleLockChildren(coSimObject thisObj, coSimGroup simGroup)
         {
-           for(int i = 0; i < simGroup.getCount(); i++)
+           for(uint i = 0; i < simGroup.getCount(); i++)
            {
-              coSimObject child = simGroup.getObject(child);
+              coSimObject child = simGroup.getObject(i);
               if( child.isMemberOfClass( "SimGroup" ) )
-                 EWorldEditorToggleLockChildren(thisObj, child);
-              else
+                 EWorldEditorToggleLockChildren(thisObj, (coSimGroup)child);
                  child.setLocked( !child["locked"].AsBool() );
            }
             EWorldEditorSyncGui("EWorldEditor");
@@ -2325,85 +2324,86 @@ namespace DNT_FPS_Demo_Game_Dll.Tools
         [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "toggleHideChildren", "", 2, 2500, false)]
         public void EWorldEditorToggleHideChildren(coSimObject thisObj, coSimGroup simGroup)
         {
-           for(int i = 0; i < simGroup.getCount(); i++)
+           for(uint i = 0; i < simGroup.getCount(); i++)
            {
-              coSimObject child = simGroup.getObject(child);
+              coSimObject child = simGroup.getObject(i);
               if( child.isMemberOfClass( "SimGroup" ) )
-                 EWorldEditorToggleHideChildren(thisObj, child);
+                 EWorldEditorToggleHideChildren(thisObj, (coSimGroup)child);
               else
                  thisObj.call("hideObject", child, (!child.hidden).AsString() );
            }
             EWorldEditorSyncGui("EWorldEditor");
         }
        [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "convertSelectionToPolyhedralObjects", "", 2, 2500, false)]
-      public void EWorldEditorConvertSelectionToPolyhedralObjects(coSimObject thisObj, string className)
+      public void EWorldEditorConvertSelectionToPolyhedralObjects(coWorldEditor thisObj, string className)
       {
-         group = thisObj.getNewObjectGroup();
-         undoManager = Editor.getUndoManager();
+         coSimGroup group = EWorldEditorGetNewObjectGroup(thisObj);
+         coUndoManager undoManager = EditorGetUndoManager("Editor");
    
-         activeSelection = thisObj.getActiveSelection();
+         coSimGroup activeSelection = thisObj.getActiveSelection();
          while( activeSelection.getCount() != 0 )
          {
-            oldObject = activeSelection.getObject( 0 );
-            newObject = thisObj.createPolyhedralObject( className, oldObject );
+            coSimObject oldObject = activeSelection.getObject( 0 );
+            coSimObject newObject = thisObj.createPolyhedralObject( className, oldObject );
             if( console.isObject( newObject ) )
             {
-               undoManager.pushCompound( "Convert ConvexShape to " @ className );
+               undoManager.pushCompound( "Convert ConvexShape to " + className );
                newObject.parentGroup = oldObject.parentGroup;
-               MECreateUndoAction::submit( newObject );
-               MEDeleteUndoAction::submit( oldObject );
+               console.Call("MECreateUndoAction::submit( "+newObject+" )");
+               console.Call("MEDeleteUndoAction::submit( "+oldObject+" )");
                undoManager.popCompound();
             }
          }
       }
       [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "convertSelectionToConvexShape", "", 1, 2500, false)]
-      public void EWorldEditorConvertSelectionToConvexShape(coSimObject thisObj)
+      public void EWorldEditorConvertSelectionToConvexShape(coWorldEditor thisObj)
       {
-         group = thisObj.getNewObjectGroup();
-         undoManager = Editor.getUndoManager();
+         coSimGroup group = EWorldEditorGetNewObjectGroup(thisObj);
+         coUndoManager undoManager = EditorGetUndoManager("Editor");
    
-         activeSelection = thisObj.getActiveSelection();
+         coSimGroup activeSelection = thisObj.getActiveSelection();
          while( activeSelection.getCount() != 0 )
          {
-            oldObject = activeSelection.getObject( 0 );
-            newObject = thisObj.createConvexShapeFrom( oldObject );
+            coSimObject oldObject = activeSelection.getObject( 0 );
+            coSimObject newObject = thisObj.createConvexShapeFrom( oldObject );
             if( console.isObject( newObject ) )
             {
-               undoManager.pushCompound( "Convert " @ oldObject.getClassName() @ " to ConvexShape" );
+               undoManager.pushCompound( "Convert " + oldObject.getClassName() + " to ConvexShape" );
                newObject.parentGroup = oldObject.parentGroup;
-               MECreateUndoAction::submit( newObject );
-               MEDeleteUndoAction::submit( oldObject );
+               console.Call("MECreateUndoAction::submit( "+newObject+" )");
+               console.Call("MEDeleteUndoAction::submit( "+oldObject+" )");
                undoManager.popCompound();
             }
          }
       }
       [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "getNewObjectGroup", "", 1, 2500, false)]
-      public void EWorldEditorGetNewObjectGroup(coSimObject thisObj)
+      public coSimGroup EWorldEditorGetNewObjectGroup(coSimObject thisObj)
       {
-         return EWCreatorWindow.getNewObjectGroup();
+         return ((coGuiWindowCtrl)EWCreatorWindow).call("getNewObjectGroup");
       }
       [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "deleteMissionObject", "", 2, 2500, false)]
-      public void EWorldEditorDeleteMissionObject(coSimObject thisObj, string object)
+      public void EWorldEditorDeleteMissionObject(coSimObject thisObj, string obj)
       {
          // Unselect in editor tree.
-   
-         id = EditorTree.findItemByObjectId( object );   
-         EditorTree.selectItem( id, false );
+         coGuiTreeViewCtrl EditorTree = "EditorTree";
+         int id = EditorTree.findItemByObjectId( obj );   
+         EditorTree.selectItem( id.AsString(), false.AsString() );
    
          // Delete object.
    
-         MEDeleteUndoAction::submit( object );
-         EWorldEditor.isDirty = true;
-         EditorTree.buildVisibleTree( true );
+         console.Call("MEDeleteUndoAction::submit( "+obj+" )");
+         ((coWorldEditor)"EWorldEditor").isDirty = true;
+         EditorTree.buildVisibleTree( true.AsString() );
       }
       [Torque_Decorations.TorqueCallBack("", "EWorldEditor", "selectAllObjectsInSet", "", 3, 2500, false)]
-      public void EWorldEditorSelectAllObjectsInSet(coSimObject thisObj, string set, string deselect)
+      public void EWorldEditorSelectAllObjectsInSet(coWorldEditor thisObj, coSimSet set, bool deselect)
       {
          if( !console.isObject( set ) )
             return;
       
-         foreach( obj in set )
+         for( uint i = 0; i < set.getCount(); i++ )
          {
+             coSimObject obj = set.getObject(i);
             if( deselect )
                thisObj.unselectObject( obj );
             else
